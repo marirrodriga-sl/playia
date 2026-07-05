@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { PLAYAS, ISLAS } from '../data/playas.js'
 import TarjetaPlaya from '../components/TarjetaPlaya.jsx'
+import FondoHome from '../components/FondoHome.jsx'
 
 const ORIENTACIONES = [
   { valor: 'todas', etiqueta: 'Todas' },
@@ -23,7 +24,10 @@ export default function Home() {
 
   return (
     <section>
-      <h1 className="text-2xl font-bold text-sky-900">Playas de Canarias</h1>
+      <FondoHome />
+
+      <div className="relative z-10">
+      <h1 className="text-2xl font-bold text-sky-900 drop-shadow-sm">Playas de Canarias</h1>
 
       <div className="mt-4 space-y-3">
         {/* Isla */}
@@ -86,10 +90,11 @@ export default function Home() {
       </div>
 
       {playas.length === 0 && (
-        <p className="mt-6 text-center text-sky-500">
+        <p className="mt-6 text-center text-sky-700">
           No hay playas que coincidan con la búsqueda.
         </p>
       )}
+      </div>
     </section>
   )
 }
