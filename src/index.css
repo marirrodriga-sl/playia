@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+/* Fondo dinámico de la ficha (FondoPlaya) */
+@keyframes olaDeriva {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes solLatido {
+  0%, 100% { transform: scale(1); opacity: 0.92; }
+  50% { transform: scale(1.05); opacity: 1; }
+}
+.ola-anim { animation: olaDeriva 9s linear infinite; }
+.sol-anim { animation: solLatido 6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ola-anim, .sol-anim { animation: none; }
+}
