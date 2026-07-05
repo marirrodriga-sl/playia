@@ -1,4 +1,4 @@
-import { UMBRALES } from '../rules/umbrales.js'
+import { UMBRALES } from '../domain/umbrales.js'
 
 // Escalas visuales para la ficha. Las zonas del viento se atan a los umbrales
 // del semáforo (umbrales.js) para que todo sea coherente. Cada zona: hasta qué

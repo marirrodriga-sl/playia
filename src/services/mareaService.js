@@ -1,4 +1,5 @@
-import { obtenerMareaDemo, estadoMarea, proximo } from './mareaDemo.js'
+import { obtenerMareaDemo } from './mareaDemo.js'
+import { estadoMarea, proximo } from '../domain/marea.js'
 
 // Obtiene la marea REAL desde el backend (/api/marea, que oculta la key de
 // WorldTides). Si el backend falla, cae a los datos de ejemplo para no dejar

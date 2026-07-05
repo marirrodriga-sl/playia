@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { obtenerMarea } from '../data/marea.js'
+import { obtenerMarea } from '../services/mareaService.js'
 
 export function useMarea(playa) {
   const [marea, setMarea] = useState(null)
