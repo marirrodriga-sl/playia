@@ -1,5 +1,9 @@
 function hhmm(fecha) {
-  return fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+  return fecha.toLocaleTimeString('es-ES', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Atlantic/Canary', // hora local de las playas, no la del visitante
+  })
 }
 
 // Construye la curva de marea del día (0–24h) interpolando entre extremos con
@@ -9,8 +13,14 @@ function construirCurva(extremos, width, height, pad) {
   dia.setHours(0, 0, 0, 0)
   const t0 = dia.getTime()
   const t1 = t0 + 24 * 60 * 60000
-  const minA = 0.4
-  const maxA = 3.0
+  // Auto-escala vertical a las alturas reales (el datum de WorldTides puede ser
+  // negativo y de rango pequeño), con un margen para que la curva respire.
+  const alturas = extremos.map((e) => e.altura)
+  const lo = Math.min(...alturas)
+  const hi = Math.max(...alturas)
+  const margen = (hi - lo) * 0.3 || 0.5
+  const minA = lo - margen
+  const maxA = hi + margen
   const x = (t) => pad + ((t - t0) / (t1 - t0)) * (width - 2 * pad)
   const y = (a) => height - pad - ((a - minA) / (maxA - minA)) * (height - 2 * pad)
 
@@ -39,7 +49,8 @@ function construirCurva(extremos, width, height, pad) {
 }
 
 export default function Marea({ datos, ahora = new Date() }) {
-  const { extremos, subiendo, coeficiente, mareaViva, proximaPleamar, proximaBajamar } = datos
+  const { extremos, subiendo, coeficiente, rango, mareaViva, proximaPleamar, proximaBajamar, esDemo } = datos
+  const detalleViva = coeficiente ? `coef. ${coeficiente}` : rango != null ? `rango ${rango} m` : ''
 
   const W = 320
   const H = 90
@@ -53,7 +64,9 @@ export default function Marea({ datos, ahora = new Date() }) {
     <div className="mt-4 rounded-xl bg-white p-5 shadow-sm">
       <div className="flex items-baseline justify-between">
         <h2 className="text-base font-semibold text-sky-900">Marea</h2>
-        <span className="text-xs italic text-slate-400">datos de ejemplo</span>
+        <span className="text-xs italic text-slate-400">
+          {esDemo ? 'datos de ejemplo' : 'datos: WorldTides'}
+        </span>
       </div>
 
       <p className="mt-1 text-lg font-medium text-sky-900">
@@ -62,8 +75,8 @@ export default function Marea({ datos, ahora = new Date() }) {
 
       {mareaViva && (
         <p className="mt-2 rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-800">
-          ⚠️ Marea viva (coef. {coeficiente}) — en pleamar la playa puede quedarse
-          con muy poca arena.
+          ⚠️ Marea viva{detalleViva ? ` (${detalleViva})` : ''} — en pleamar la playa
+          puede quedarse con muy poca arena.
         </p>
       )}
 
