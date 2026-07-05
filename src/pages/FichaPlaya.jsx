@@ -2,8 +2,10 @@ import { useParams, Link } from 'react-router-dom'
 import { PLAYAS } from '../data/playas.js'
 import { usePlaya } from '../hooks/usePlaya.js'
 import { useMarea } from '../hooks/useMarea.js'
+import { ESCALA_TEMP, ESCALA_VIENTO } from '../data/escalas.js'
 import Semaforo from '../components/Semaforo.jsx'
 import Marea from '../components/Marea.jsx'
+import Escala from '../components/Escala.jsx'
 
 function Dato({ etiqueta, valor, unidad }) {
   return (
@@ -56,9 +58,12 @@ export default function FichaPlaya() {
 
           {marea && <Marea datos={marea} />}
 
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <Dato etiqueta="Temperatura" valor={Math.round(datos.temperatura)} unidad="°" />
-            <Dato etiqueta="Viento" valor={Math.round(datos.viento)} unidad=" km/h" />
+          <div className="mt-4 space-y-3">
+            <Escala config={ESCALA_TEMP} valor={datos.temperatura} />
+            <Escala config={ESCALA_VIENTO} valor={datos.viento} />
+          </div>
+
+          <div className="mt-3 grid grid-cols-3 gap-3">
             <Dato etiqueta="Agua" valor={Math.round(datos.tempAgua)} unidad="°" />
             <Dato etiqueta="Oleaje" valor={datos.oleaje} unidad=" m" />
             <Dato etiqueta="UV" valor={Math.round(datos.uv)} unidad="" />
