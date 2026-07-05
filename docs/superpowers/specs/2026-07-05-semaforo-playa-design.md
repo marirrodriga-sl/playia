@@ -150,12 +150,21 @@ El motor devuelve, además del nivel, los **motivos** (para la frase clara) y lo
 
 ---
 
-## 8. Estética (marca Marirrodriga)
+## 8. Estética y marca
 
-- **Dark mode** base `#07070f`, acento `#7c6eec`.
+**Tono visual:** luminoso y amigable, como corresponde a una página de **tiempo y playas** — NO el
+dark mode de marca Marirrodriga. Paleta de **azules claros** (cielo/mar) y **amarillos** (sol/arena).
+
+- Fondos claros, cielo/mar; acentos soleados. Sensación fresca y accesible.
+- El **semáforo** (🟢🟠🔴) mantiene sus colores propios (verde/ámbar/rojo) por encima de la paleta.
 - **Mobile-first**: diseñar primero pantalla estrecha, expandir con `sm:`/`md:`/`lg:`.
 - HTML semántico, estados interactivos definidos (hover/focus/disabled/active).
 - Se activará la skill `frontend-design` en la fase de UI.
+
+**Marca Marirrodriga.IA:**
+- Presente sobre todo vía **logo** de Marirrodriga.IA (más que el nombre del producto).
+- El logo es **clicable** y lleva a la web oficial de la empresa:
+  <https://www.marirrodriga-ia.com/> (abre en nueva pestaña).
 
 ---
 
