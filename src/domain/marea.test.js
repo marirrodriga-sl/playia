@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { estadoMarea, proximo } from './mareaDemo.js'
+import { estadoMarea, proximo } from './marea.js'
 
 const extremos = [
   { tipo: 'bajamar', fecha: new Date('2026-07-05T02:30') },

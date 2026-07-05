@@ -1,5 +1,5 @@
 import { RouterProvider } from 'react-router-dom'
-import Layout from './Layout.jsx'
+import Layout from './components/layout/Layout.jsx'
 import { router } from './router.jsx'
 
 export default function App() {

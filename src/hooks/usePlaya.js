@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { obtenerDatosPlaya } from '../data/openMeteo.js'
-import { evaluarPlaya } from '../rules/evaluarPlaya.js'
+import { obtenerDatosPlaya } from '../services/openMeteo.js'
+import { evaluarPlaya } from '../domain/evaluarPlaya.js'
 
 // enabled=false deja el hook en espera (no pide datos). Se usa con carga
 // perezosa: la tarjeta solo pide su semáforo cuando entra en pantalla.

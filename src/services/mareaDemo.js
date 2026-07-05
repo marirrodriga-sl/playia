@@ -1,6 +1,7 @@
 // Datos de marea de EJEMPLO (demo).
-// La estructura imita lo que devolverá la API real (WorldTides / Puertos del Estado),
-// de modo que conectarla luego sea solo cambiar la fuente, no la UI.
+// La estructura imita lo que devuelve la API real (mareaService), de modo que
+// alternar entre real y demo sea transparente para la UI.
+import { estadoMarea, proximo } from '../domain/marea.js'
 
 // Genera los 4 extremos de marea de un día tipo (~cada 6h12m), con un pequeño
 // desfase por playa para que no sean todas idénticas.
@@ -15,32 +16,6 @@ export function extremosDelDia(playa, base = new Date()) {
     fecha: new Date(inicio.getTime() + i * (6 * 60 + 12) * 60000),
     altura: alturas[tipo],
   }))
-}
-
-// Estado de la marea "ahora": subiendo hacia pleamar o bajando hacia bajamar.
-export function estadoMarea(extremos, ahora = new Date()) {
-  let anterior = null
-  let siguiente = null
-  for (const e of extremos) {
-    if (e.fecha <= ahora) anterior = e
-    else {
-      siguiente = e
-      break
-    }
-  }
-  const subiendo = siguiente
-    ? siguiente.tipo === 'pleamar'
-    : anterior?.tipo === 'bajamar'
-  return { subiendo, anterior, siguiente }
-}
-
-// Primer extremo de un tipo ('pleamar' | 'bajamar') posterior a "ahora"
-// (o el primero del día si ya han pasado todos).
-export function proximo(extremos, tipo, ahora = new Date()) {
-  return (
-    extremos.find((e) => e.tipo === tipo && e.fecha > ahora) ??
-    extremos.find((e) => e.tipo === tipo)
-  )
 }
 
 export function obtenerMareaDemo(playa, ahora = new Date()) {
