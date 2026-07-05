@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom'
 import { PLAYAS } from '../data/playas.js'
 import { usePlaya } from '../hooks/usePlaya.js'
-import { obtenerMareaDemo } from '../data/mareaDemo.js'
+import { useMarea } from '../hooks/useMarea.js'
 import Semaforo from '../components/Semaforo.jsx'
 import Marea from '../components/Marea.jsx'
 
@@ -30,6 +30,7 @@ export default function FichaPlaya() {
   }
 
   const { estado, datos, veredicto } = usePlaya(playa)
+  const marea = useMarea(playa)
 
   return (
     <section>
@@ -53,7 +54,7 @@ export default function FichaPlaya() {
             )}
           </div>
 
-          <Marea datos={obtenerMareaDemo(playa)} />
+          {marea && <Marea datos={marea} />}
 
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Dato etiqueta="Temperatura" valor={Math.round(datos.temperatura)} unidad="°" />
