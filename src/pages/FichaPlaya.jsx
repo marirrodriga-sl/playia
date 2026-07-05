@@ -2,10 +2,12 @@ import { useParams, Link } from 'react-router-dom'
 import { PLAYAS } from '../data/playas.js'
 import { usePlaya } from '../hooks/usePlaya.js'
 import { useMarea } from '../hooks/useMarea.js'
+import { fraccionMareaAhora } from '../domain/marea.js'
 import { ESCALA_TEMP, ESCALA_VIENTO } from '../data/escalas.js'
 import Semaforo from '../components/Semaforo.jsx'
 import Marea from '../components/Marea.jsx'
 import Escala from '../components/Escala.jsx'
+import FondoPlaya from '../components/FondoPlaya.jsx'
 
 function Dato({ etiqueta, valor, unidad }) {
   return (
@@ -33,14 +35,30 @@ export default function FichaPlaya() {
 
   const { estado, datos, veredicto } = usePlaya(playa)
   const marea = useMarea(playa)
+  const fraccionAgua = marea ? fraccionMareaAhora(marea.extremos) : 0.5
+  const comoLlegar = `https://www.google.com/maps/dir/?api=1&destination=${playa.lat},${playa.lon}`
 
   return (
     <section>
-      <Link to="/" className="text-sm text-sky-600 underline">← Todas las playas</Link>
-      <h1 className="mt-2 text-2xl font-bold text-sky-900">{playa.nombre}</h1>
+      <FondoPlaya nivel={veredicto?.nivel ?? 'ambar'} fraccionAgua={fraccionAgua} />
 
-      {estado === 'cargando' && <p className="mt-4 text-sky-500">Cargando datos…</p>}
-      {estado === 'error' && <p className="mt-4 text-red-500">No se pudieron cargar los datos.</p>}
+      <div className="relative z-10">
+      <Link to="/" className="text-sm font-medium text-sky-800 underline drop-shadow-sm">← Todas las playas</Link>
+
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-bold text-sky-950 drop-shadow-sm">{playa.nombre}</h1>
+        <a
+          href={comoLlegar}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 rounded-full bg-white/90 px-3 py-1.5 text-sm font-semibold text-sky-800 shadow-sm backdrop-blur transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+        >
+          📍 Cómo llegar
+        </a>
+      </div>
+
+      {estado === 'cargando' && <p className="mt-4 text-sky-800">Cargando datos…</p>}
+      {estado === 'error' && <p className="mt-4 text-red-600">No se pudieron cargar los datos.</p>}
 
       {estado === 'ok' && (
         <>
@@ -70,6 +88,7 @@ export default function FichaPlaya() {
           </div>
         </>
       )}
+      </div>
     </section>
   )
 }
