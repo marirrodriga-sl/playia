@@ -1,5 +1,12 @@
 import { obtenerMareaDemo } from './mareaDemo.js'
-import { estadoMarea, proximo, extraerMarea, instanteDesdeLocal } from '../domain/marea.js'
+import {
+  estadoMarea,
+  proximo,
+  extraerMarea,
+  instanteDesdeLocal,
+  rangosPorDia,
+  esMareaViva,
+} from '../domain/marea.js'
 
 const MARINE_URL = 'https://marine-api.open-meteo.com/v1/marine'
 
@@ -14,13 +21,14 @@ export async function obtenerMarea(playa, ahora = new Date()) {
       longitude: playa.lon,
       hourly: 'sea_level_height_msl',
       timezone: 'auto',
-      forecast_days: '2', // 2 días para tener vecinos y clasificar los extremos del día
+      forecast_days: '10', // ~ciclo mareal completo, para auto-calibrar la marea viva
     })
     const res = await fetch(`${MARINE_URL}?${params}`)
     if (!res.ok) throw new Error('marea no disponible')
     const data = await res.json()
 
-    const { extremos: extremosISO, rango, mareaViva } = extraerMarea(data.hourly)
+    const { extremos: extremosISO, rango } = extraerMarea(data.hourly)
+    const mareaViva = esMareaViva(rango, rangosPorDia(data.hourly))
     const offset = data.utc_offset_seconds ?? 0
     const extremos = extremosISO.map((e) => ({ ...e, fecha: instanteDesdeLocal(e.fecha, offset) }))
     if (extremos.length === 0) throw new Error('sin extremos')

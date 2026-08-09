@@ -1,7 +1,7 @@
 // Lógica de negocio pura de la marea (sin I/O, sin React).
 // La usan tanto los datos reales (mareaService) como los de ejemplo (mareaDemo).
 
-const UMBRAL_MAREA_VIVA = 2.0 // m de rango pleamar-bajamar sobre el nivel medio (MSL)
+const FACTOR_MAREA_VIVA = 0.9 // hoy es "viva" si su rango >= 90% del máximo del ciclo
 
 const r2 = (n) => Math.round(n * 100) / 100
 
@@ -13,35 +13,60 @@ export function instanteDesdeLocal(localISO, offsetSeconds) {
   return new Date(Date.parse(`${localISO}Z`) - offsetSeconds * 1000)
 }
 
-// Extrae los extremos de marea (pleamar/bajamar) de una serie horaria de nivel
-// del mar (Open-Meteo `sea_level_height_msl`). Función PURA: detecta máximos y
-// mínimos locales y se queda con los del primer día de la serie (Open-Meteo
-// empieza en 00:00 local de hoy). Trabaja con horas locales SIN zona, así que es
-// independiente de la zona horaria de la máquina.
-// Entrada: { time: string[], sea_level_height_msl: number[] } (ISO local + metros).
-// Salida:  { extremos: [{ tipo, fecha(ISO local), altura }], rango, mareaViva }.
-export function extraerMarea(hourly, { umbralViva = UMBRAL_MAREA_VIVA } = {}) {
+// Detecta TODOS los máximos/mínimos locales de la serie horaria de nivel del mar.
+// Trabaja con horas locales SIN zona, así que es independiente de la zona de la
+// máquina. Devuelve [{ tipo, fecha(ISO local), altura }].
+function detectarExtremos(hourly) {
   const time = hourly?.time ?? []
   const sea = hourly?.sea_level_height_msl ?? []
-  const diaPrimero = time[0]?.slice(0, 10) // 'YYYY-MM-DD' del primer punto
-
   const extremos = []
   for (let i = 1; i < sea.length - 1; i++) {
     const [prev, cur, next] = [sea[i - 1], sea[i], sea[i + 1]]
     const esMax = cur >= prev && cur >= next && (cur > prev || cur > next)
     const esMin = cur <= prev && cur <= next && (cur < prev || cur < next)
     if (!esMax && !esMin) continue
-    if (time[i].slice(0, 10) !== diaPrimero) continue
     extremos.push({ tipo: esMax ? 'pleamar' : 'bajamar', fecha: time[i], altura: r2(cur) })
   }
+  return extremos
+}
 
+// Rango pleamar-bajamar de un conjunto de extremos (o null si falta alguno).
+function rangoDe(extremos) {
   const pleamares = extremos.filter((e) => e.tipo === 'pleamar').map((e) => e.altura)
   const bajamares = extremos.filter((e) => e.tipo === 'bajamar').map((e) => e.altura)
-  const rango =
-    pleamares.length && bajamares.length
-      ? r2(Math.max(...pleamares) - Math.min(...bajamares))
-      : null
-  return { extremos, rango, mareaViva: rango != null && rango >= umbralViva }
+  return pleamares.length && bajamares.length
+    ? r2(Math.max(...pleamares) - Math.min(...bajamares))
+    : null
+}
+
+// Extrae los extremos de marea (pleamar/bajamar) del PRIMER día de la serie
+// (Open-Meteo empieza en 00:00 local de hoy). Función PURA.
+// Entrada: { time: string[], sea_level_height_msl: number[] } (ISO local + metros).
+// Salida:  { extremos: [{ tipo, fecha(ISO local), altura }], rango }.
+export function extraerMarea(hourly) {
+  const diaPrimero = hourly?.time?.[0]?.slice(0, 10) // 'YYYY-MM-DD' del primer punto
+  const extremos = detectarExtremos(hourly).filter((e) => e.fecha.slice(0, 10) === diaPrimero)
+  return { extremos, rango: rangoDe(extremos) }
+}
+
+// Rango pleamar-bajamar de CADA día de la serie (para calibrar la marea viva
+// contra el ciclo mareal completo). Devuelve number[] (días sin rango, fuera).
+export function rangosPorDia(hourly) {
+  const porDia = {}
+  for (const e of detectarExtremos(hourly)) {
+    const dia = e.fecha.slice(0, 10)
+    ;(porDia[dia] ??= []).push(e)
+  }
+  return Object.values(porDia)
+    .map(rangoDe)
+    .filter((r) => r != null)
+}
+
+// Marea viva AUTO-CALIBRADA: hoy es viva si su rango se acerca al máximo del
+// ciclo mareal disponible (no un umbral fijo). Robusto en cualquier isla/época.
+export function esMareaViva(rangoHoy, rangosPeriodo, factor = FACTOR_MAREA_VIVA) {
+  if (rangoHoy == null || !rangosPeriodo?.length) return false
+  return rangoHoy >= factor * Math.max(...rangosPeriodo)
 }
 
 // Estado de la marea "ahora": subiendo hacia pleamar o bajando hacia bajamar.
