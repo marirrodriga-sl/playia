@@ -28,7 +28,7 @@ src/
 │   └── marea.js          Estado de marea (subiendo/bajando, próximos extremos)
 ├── services/      Acceso a datos externos (I/O)
 │   ├── openMeteo.js      Tiempo/viento/oleaje/UV (Open-Meteo, sin key)
-│   ├── mareaService.js   Marea real vía backend /api/marea (con fallback a demo)
+│   ├── mareaService.js   Marea real vía Open-Meteo (con fallback a demo)
 │   └── mareaDemo.js      Datos de marea de ejemplo
 ├── data/          Datos estáticos y configuración de UI
 │   ├── playas.js         Catálogo de playas (generado desde OpenStreetMap)
@@ -38,11 +38,11 @@ src/
 ├── pages/         Páginas (Home, FichaPlaya)
 ├── router.jsx     Rutas
 └── App.jsx        Composición raíz
-
-api/               Funciones serverless (Vercel) — el backend proxy
-├── marea.js       Endpoint /api/marea: oculta la key y cachea por día
-└── _worldtides.js Cliente de WorldTides (normalización + fetch)
 ```
+
+La marea se deriva de la curva horaria de nivel del mar de Open-Meteo: el dominio
+(`extraerMarea`) detecta los máximos/mínimos locales → pleamar/bajamar, sin API key
+ni backend.
 
 **Flujo de dependencias:** `components/pages` → `hooks` → `services` → `domain`. El dominio no
 importa nada de las capas externas.
@@ -51,28 +51,24 @@ importa nada de las capas externas.
 
 - **Tiempo/mar** (temperatura, viento, UV, oleaje, temp. agua): [Open-Meteo](https://open-meteo.com)
   — gratis y sin API key, llamado directamente desde el navegador.
-- **Marea** (pleamar/bajamar, marea viva): [WorldTides](https://www.worldtides.info) — vía el backend
-  `api/marea.js`, que **oculta la API key** (nunca llega al frontend) y cachea por día.
+- **Marea** (pleamar/bajamar, marea viva): [Open-Meteo Marine](https://open-meteo.com) — nivel del mar
+  (`sea_level_height_msl`) por horas, también gratis y sin key. Los extremos se calculan en el cliente.
 
 ## Desarrollo
 
 ```bash
 npm install
-npm run dev      # servidor de desarrollo (incluye el backend /api en un middleware de Vite)
+npm run dev      # servidor de desarrollo
 npm test         # tests unitarios (Vitest) del dominio y los servicios
 npm run build    # build de producción
 ```
 
-Crea un `.env` (ver `.env.example`) con tu API key de WorldTides:
-
-```
-WORLDTIDES_KEY=tu_key_aqui
-```
+No hace falta ninguna API key ni fichero `.env`: todas las fuentes de datos (Open-Meteo) son
+gratuitas y sin autenticación.
 
 ## Deploy
 
-Desplegado en Vercel. La variable `WORLDTIDES_KEY` se configura en el panel de Vercel (Settings →
-Environment Variables), nunca en el código.
+Desplegado en Vercel como SPA estática. No requiere variables de entorno ni funciones serverless.
 
 ## Stack
 

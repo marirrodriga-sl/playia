@@ -24,6 +24,12 @@ function Dato({ etiqueta, valor, unidad }) {
 export default function FichaPlaya() {
   const { id } = useParams()
   const playa = PLAYAS.find((p) => p.id === id)
+
+  // Los hooks se llaman siempre (antes de cualquier return) para respetar las
+  // reglas de hooks de React; son tolerantes a `playa` indefinida.
+  const { estado, datos, veredicto } = usePlaya(playa, !!playa)
+  const marea = useMarea(playa)
+
   if (!playa) {
     return (
       <section>
@@ -33,8 +39,6 @@ export default function FichaPlaya() {
     )
   }
 
-  const { estado, datos, veredicto } = usePlaya(playa)
-  const marea = useMarea(playa)
   const fraccionAgua = marea ? fraccionMareaAhora(marea.extremos) : 0.5
   const comoLlegar = `https://www.google.com/maps/dir/?api=1&destination=${playa.lat},${playa.lon}`
 

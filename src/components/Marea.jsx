@@ -13,8 +13,8 @@ function construirCurva(extremos, width, height, pad) {
   dia.setHours(0, 0, 0, 0)
   const t0 = dia.getTime()
   const t1 = t0 + 24 * 60 * 60000
-  // Auto-escala vertical a las alturas reales (el datum de WorldTides puede ser
-  // negativo y de rango pequeño), con un margen para que la curva respire.
+  // Auto-escala vertical a las alturas reales (el nivel del mar sobre el nivel
+  // medio puede ser negativo y de rango pequeño), con un margen para que respire.
   const alturas = extremos.map((e) => e.altura)
   const lo = Math.min(...alturas)
   const hi = Math.max(...alturas)
@@ -65,7 +65,7 @@ export default function Marea({ datos, ahora = new Date() }) {
       <div className="flex items-baseline justify-between">
         <h2 className="text-base font-semibold text-sky-900">Marea</h2>
         <span className="text-xs italic text-slate-400">
-          {esDemo ? 'datos de ejemplo' : 'datos: WorldTides'}
+          {esDemo ? 'datos de ejemplo' : 'datos: Open-Meteo'}
         </span>
       </div>
 

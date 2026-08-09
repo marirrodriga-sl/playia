@@ -10,7 +10,7 @@ export function usePlaya(playa, enabled = true) {
   const [veredicto, setVeredicto] = useState(null)
 
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled || !playa) return
     let activo = true
     setEstado('cargando')
     obtenerDatosPlaya(playa)
@@ -26,7 +26,7 @@ export function usePlaya(playa, enabled = true) {
     return () => {
       activo = false
     }
-  }, [playa.id, enabled])
+  }, [playa?.id, enabled])
 
   return { estado, datos, veredicto }
 }
