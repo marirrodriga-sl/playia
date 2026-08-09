@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { estadoMarea, proximo, fraccionMareaAhora, extraerMarea, instanteDesdeLocal } from './marea.js'
+import {
+  estadoMarea,
+  proximo,
+  fraccionMareaAhora,
+  extraerMarea,
+  instanteDesdeLocal,
+  rangosPorDia,
+  esMareaViva,
+} from './marea.js'
 
 // Construye una serie horaria tipo Open-Meteo (sea_level_height_msl) siguiendo
 // un coseno de periodo 12 h → máximos en las horas 0,12,24 y mínimos en 6,18.
@@ -109,19 +117,36 @@ describe('extraerMarea', () => {
     expect(rango).toBe(2) // pleamar +1, bajamar -1
   })
 
-  it('marca marea viva cuando el rango supera el umbral', () => {
-    const viva = extraerMarea(serieCos({ amp: 1.2 }), { umbralViva: 2 })
-    expect(viva.mareaViva).toBe(true) // rango 2.4 >= 2
-    const muerta = extraerMarea(serieCos({ amp: 0.5 }), { umbralViva: 2 })
-    expect(muerta.mareaViva).toBe(false) // rango 1 < 2
-  })
-
   it('curva plana (sin extremos) devuelve lista vacía y rango null', () => {
     const plana = { time: ['2026-08-09T00:00', '2026-08-09T01:00', '2026-08-09T02:00'], sea_level_height_msl: [0.5, 0.5, 0.5] }
-    const { extremos, rango, mareaViva } = extraerMarea(plana)
+    const { extremos, rango } = extraerMarea(plana)
     expect(extremos).toEqual([])
     expect(rango).toBe(null)
-    expect(mareaViva).toBe(false)
+  })
+})
+
+describe('rangosPorDia', () => {
+  it('devuelve el rango pleamar-bajamar de cada día de la serie', () => {
+    // 48 h de coseno amp=1 → dos días completos, cada uno con rango 2
+    expect(rangosPorDia(serieCos({ horas: 48, amp: 1 }))).toEqual([2, 2])
+  })
+})
+
+describe('esMareaViva', () => {
+  // Auto-calibrable: viva si el rango de hoy está cerca del máximo del ciclo.
+  const ciclo = [1.39, 1.76, 2.13, 2.39, 2.5, 2.28, 1.65] // datos reales GC (ago 2026)
+
+  it('marca viva un día de rango alto (cerca del máximo del ciclo)', () => {
+    expect(esMareaViva(2.5, ciclo)).toBe(true) // 2.5 >= 0.9 * 2.5
+  })
+
+  it('NO marca viva un día de marea muerta', () => {
+    expect(esMareaViva(1.39, ciclo)).toBe(false) // 1.39 < 0.9 * 2.5 (=2.25)
+  })
+
+  it('sin rango o sin ciclo de referencia, no es viva', () => {
+    expect(esMareaViva(null, ciclo)).toBe(false)
+    expect(esMareaViva(2.5, [])).toBe(false)
   })
 })
 
