@@ -8,7 +8,6 @@ import Semaforo from '../components/Semaforo.jsx'
 import Marea from '../components/Marea.jsx'
 import Escala from '../components/Escala.jsx'
 import FondoPlaya from '../components/FondoPlaya.jsx'
-import ChatPlaya from '../components/ChatPlaya.jsx'
 
 function Dato({ etiqueta, valor, unidad }) {
   return (
@@ -91,8 +90,6 @@ export default function FichaPlaya() {
             <Dato etiqueta="Oleaje" valor={datos.oleaje} unidad=" m" />
             <Dato etiqueta="UV" valor={Math.round(datos.uv)} unidad="" />
           </div>
-
-          <ChatPlaya playa={playa} datos={datos} veredicto={veredicto} marea={marea} />
         </>
       )}
       </div>
