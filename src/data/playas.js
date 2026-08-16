@@ -1,6 +1,6 @@
 // Catálogo de playas de Canarias (generado desde OpenStreetMap, natural=beach).
 // Campos: id, nombre, isla, orientacion ('norte'|'sur'), lat, lon.
-export const PLAYAS = [
+const PLAYAS_RAW = [
   { id: 'bahia-de-timijiraque', nombre: 'Bahía de Timijiraque', isla: 'El Hierro', orientacion: 'norte', lat: 27.7701, lon: -17.91456 },
   { id: 'los-puentes', nombre: 'Los Puentes', isla: 'El Hierro', orientacion: 'norte', lat: 27.83611, lon: -17.89955 },
   { id: 'playa-arenas-blancas-el-hierro', nombre: 'Playa Arenas Blancas', isla: 'El Hierro', orientacion: 'norte', lat: 27.76667, lon: -18.12196 },
@@ -476,6 +476,48 @@ export const PLAYAS = [
   { id: 'playas-de-granadilla', nombre: 'Playas de Granadilla', isla: 'Tenerife', orientacion: 'sur', lat: 28.03017, lon: -16.56253 },
   { id: 'radazul', nombre: 'Radazul', isla: 'Tenerife', orientacion: 'norte', lat: 28.40178, lon: -16.3265 },
 ]
+
+// --- Deduplicado ---
+// El volcado de OpenStreetMap trae la misma playa varias veces (varios nodos
+// para "Playa de Mogán", "Las Burras", etc.). Colapsamos duplicados de forma
+// determinista: se descarta una entrada si comparte nombre+isla con otra ya
+// aceptada, o si está a menos de 300 m de otra ya aceptada en la misma isla
+// (mismo arenal partido en varios nodos). Se conserva siempre la primera.
+function normaliza(nombre) {
+  return nombre
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // quita tildes
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function metros(a, b) {
+  const R = 6371000
+  const rad = (x) => (x * Math.PI) / 180
+  const dLat = rad(b.lat - a.lat)
+  const dLon = rad(b.lon - a.lon)
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(s))
+}
+
+export function dedupePlayas(lista) {
+  const aceptadas = []
+  const vistos = new Set()
+  for (const p of lista) {
+    const clave = `${p.isla}|${normaliza(p.nombre)}`
+    if (vistos.has(clave)) continue
+    const cerca = aceptadas.some((q) => q.isla === p.isla && metros(p, q) < 300)
+    if (cerca) continue
+    vistos.add(clave)
+    aceptadas.push(p)
+  }
+  return aceptadas
+}
+
+export const PLAYAS = dedupePlayas(PLAYAS_RAW)
 
 export const ISLAS = [
   'Gran Canaria',
