@@ -19,6 +19,7 @@ export function evaluarPlaya(datos) {
 
   // Condiciones de ámbar
   if (datos.viento >= UMBRALES.vientoFlojo) motivos.push('viento molesto')
+  if (datos.oleaje >= UMBRALES.oleajeModerado) motivos.push('oleaje moderado')
   if (datos.tempAgua < UMBRALES.aguaFria) motivos.push('agua fría')
   if (datos.uv > UMBRALES.uvMuyAlto) motivos.push('UV muy alto')
   if (datos.temperatura <= UMBRALES.tempAgradable) motivos.push('temperatura fresca')

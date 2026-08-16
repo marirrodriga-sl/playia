@@ -35,10 +35,21 @@ describe('evaluarPlaya', () => {
     expect(v.motivos).toContain('agua fría')
   })
 
-  it('devuelve ámbar con UV muy alto', () => {
-    const v = evaluarPlaya({ ...buenDia, uv: 10 })
+  it('devuelve ámbar con UV extremo', () => {
+    const v = evaluarPlaya({ ...buenDia, uv: 11 })
     expect(v.nivel).toBe('ambar')
     expect(v.motivos).toContain('UV muy alto')
+  })
+
+  it('UV alto normal de Canarias (9) no baja a ámbar por sí solo', () => {
+    const v = evaluarPlaya({ ...buenDia, uv: 9 })
+    expect(v.nivel).toBe('verde')
+  })
+
+  it('devuelve ámbar con oleaje moderado (no alto)', () => {
+    const v = evaluarPlaya({ ...buenDia, oleaje: 1.2 })
+    expect(v.nivel).toBe('ambar')
+    expect(v.motivos).toContain('oleaje moderado')
   })
 
   it('devuelve ámbar con temperatura fresca', () => {
