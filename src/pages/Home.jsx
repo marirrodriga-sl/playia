@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { PLAYAS, ISLAS } from '../data/playas.js'
 import TarjetaPlaya from '../components/TarjetaPlaya.jsx'
 import FondoHome from '../components/FondoHome.jsx'
+import { useFavoritos } from '../hooks/useFavoritos.js'
 
 const ORIENTACIONES = [
   { valor: 'todas', etiqueta: 'Todas' },
@@ -13,13 +14,20 @@ export default function Home() {
   const [isla, setIsla] = useState('Gran Canaria')
   const [orientacion, setOrientacion] = useState('todas')
   const [busqueda, setBusqueda] = useState('')
+  const [soloFav, setSoloFav] = useState(false)
+  const { favoritos } = useFavoritos()
 
   const q = busqueda.trim().toLowerCase()
   const playas = PLAYAS.filter(
     (p) =>
       p.isla === isla &&
       (orientacion === 'todas' || p.orientacion === orientacion) &&
-      (q === '' || p.nombre.toLowerCase().includes(q)),
+      (q === '' || p.nombre.toLowerCase().includes(q)) &&
+      (!soloFav || favoritos.has(p.id)),
+  )
+  // Las favoritas primero (orden estable dentro de cada grupo).
+  const ordenadas = [...playas].sort(
+    (a, b) => (favoritos.has(b.id) ? 1 : 0) - (favoritos.has(a.id) ? 1 : 0),
   )
 
   return (
@@ -69,6 +77,18 @@ export default function Home() {
           ))}
         </div>
 
+        {/* Solo favoritas */}
+        <button
+          type="button"
+          onClick={() => setSoloFav((v) => !v)}
+          aria-pressed={soloFav}
+          className={`ml-2 inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-sky-400 ${
+            soloFav ? 'bg-amber-400 text-white shadow-sm' : 'bg-sky-100 text-sky-700 hover:bg-sky-200'
+          }`}
+        >
+          {soloFav ? '★' : '☆'} Favoritas
+        </button>
+
         {/* Buscador */}
         <input
           type="search"
@@ -80,18 +100,20 @@ export default function Home() {
       </div>
 
       <p className="mt-4 text-sm text-sky-600">
-        {playas.length} {playas.length === 1 ? 'playa' : 'playas'}
+        {ordenadas.length} {ordenadas.length === 1 ? 'playa' : 'playas'}
       </p>
 
       <div className="mt-2 grid gap-3">
-        {playas.map((p) => (
+        {ordenadas.map((p) => (
           <TarjetaPlaya key={p.id} playa={p} />
         ))}
       </div>
 
-      {playas.length === 0 && (
+      {ordenadas.length === 0 && (
         <p className="mt-6 text-center text-sky-700">
-          No hay playas que coincidan con la búsqueda.
+          {soloFav
+            ? 'Aún no tienes playas favoritas. Toca la ☆ de una playa para guardarla.'
+            : 'No hay playas que coincidan con la búsqueda.'}
         </p>
       )}
       </div>
