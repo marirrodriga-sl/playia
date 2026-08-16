@@ -2,10 +2,12 @@ import { useParams, Link } from 'react-router-dom'
 import { PLAYAS } from '../data/playas.js'
 import { usePlaya } from '../hooks/usePlaya.js'
 import { useMarea } from '../hooks/useMarea.js'
+import { usePrevision } from '../hooks/usePrevision.js'
 import { fraccionMareaAhora } from '../domain/marea.js'
 import { ESCALA_TEMP, ESCALA_VIENTO } from '../data/escalas.js'
 import Semaforo from '../components/Semaforo.jsx'
 import Marea from '../components/Marea.jsx'
+import Prevision from '../components/Prevision.jsx'
 import Escala from '../components/Escala.jsx'
 import FondoPlaya from '../components/FondoPlaya.jsx'
 
@@ -29,6 +31,7 @@ export default function FichaPlaya() {
   // reglas de hooks de React; son tolerantes a `playa` indefinida.
   const { estado, datos, veredicto } = usePlaya(playa, !!playa)
   const marea = useMarea(playa)
+  const prevision = usePrevision(playa)
 
   if (!playa) {
     return (
@@ -79,6 +82,8 @@ export default function FichaPlaya() {
           </div>
 
           {marea && <Marea datos={marea} />}
+
+          <Prevision dias={prevision} />
 
           <div className="mt-4 space-y-3">
             <Escala config={ESCALA_TEMP} valor={datos.temperatura} />
