@@ -1,20 +1,20 @@
-// Función serverless (Vercel) del chatbot de PlayIA.
+// Función serverless (Vercel) del asistente de PlayIA.
 // Hace de proxy al LLM para que la API key NUNCA llegue al navegador.
 // El proveedor es INTERCAMBIABLE: toda la llamada al modelo vive aquí, así que
 // cambiar Gemini por Claude/GPT/otro es una edición local sin tocar el frontend.
-//
-// Diseño anti-alucinación: los números (marea, viento, veredicto...) los calcula
-// el motor de reglas del frontend y se inyectan como DATOS REALES en el contexto.
-// El modelo solo redacta; tiene prohibido inventar cifras.
 
+// Modelo "lite": alias estable, buena cuota del tier gratuito, rápido y sin el
+// "thinking" del flash grande (que dejaba respuestas cortadas).
 const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent'
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent'
 
-const SISTEMA = `Eres el asistente de PlayIA, una app que dice de un vistazo qué tal está hoy cada playa de Canarias.
-Hablas en español de España, con tono amable, cercano y BREVE (1-3 frases). Puedes usar algún emoji con moderación.
-Respondes SIEMPRE basándote únicamente en los DATOS REALES de la playa que te paso más abajo.
-NUNCA inventes cifras, horas ni previsiones: si algo no está en los datos, dilo con naturalidad y sin disculparte en exceso.
-Si te preguntan algo ajeno a esta playa, al tiempo o al baño, redirige con simpatía al tema de la playa.`
+const SISTEMA = `Eres el asistente de PlayIA, un experto local de las Islas Canarias (sobre todo Gran Canaria) que ayuda a planear el día de playa y todo lo de alrededor.
+Ayudas con: qué playa elegir según el tiempo y el mar, cómo llegar y dónde aparcar, dónde comer o tomar algo cerca, dónde alojarse, ocio y vida nocturna, y cómo moverse por la isla.
+Tono: amable, cercano, útil y BREVE (2-4 frases). Español de España. Puedes usar algún emoji con moderación.
+Reglas importantes:
+- Para el estado del mar, el viento o la marea de una playa concreta y en tiempo real, dile al usuario que lo mire en la ficha de esa playa dentro de PlayIA (ahí está el semáforo y la marea actualizados). Tú orientas en general.
+- Para recomendaciones (restaurantes, aparcamiento, bares, ocio, alojamiento): da orientación por ZONAS y opciones típicas, y recuerda confirmar horarios, precios y disponibilidad. NO te inventes nombres, direcciones ni datos concretos de los que no estés seguro; si no lo sabes con certeza, dilo con naturalidad y sugiere cómo averiguarlo.
+- Si te preguntan algo totalmente ajeno a viajar, la playa o Canarias, responde con simpatía y reconduce al tema.`
 
 // Encapsula la llamada al proveedor de IA. Cambiar de proveedor = cambiar solo esto.
 async function preguntarLLM(sistema, contexto, mensajes) {
@@ -23,27 +23,39 @@ async function preguntarLLM(sistema, contexto, mensajes) {
     parts: [{ text: String(m.texto || '').slice(0, 1000) }],
   }))
 
+  const instruccion = contexto
+    ? `${sistema}\n\n--- CONTEXTO DE LA PÁGINA ---\n${contexto}`
+    : sistema
+
   const body = {
-    systemInstruction: {
-      parts: [{ text: `${sistema}\n\n--- DATOS REALES DE LA PLAYA ---\n${contexto}` }],
-    },
+    systemInstruction: { parts: [{ text: instruccion }] },
     contents,
-    generationConfig: { temperature: 0.6, maxOutputTokens: 320 },
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 500,
+    },
   }
 
-  const res = await fetch(`${GEMINI_URL}?key=${process.env.GEMINI_API_KEY}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-
-  if (!res.ok) {
-    const txt = await res.text()
-    throw new Error(`LLM ${res.status}: ${txt.slice(0, 300)}`)
+  // El modelo gratuito da picos de 429/503 ("high demand") transitorios.
+  // Reintentamos con backoff corto antes de rendirnos.
+  const REINTENTABLES = new Set([429, 500, 502, 503, 504])
+  let ultimoError = ''
+  for (let intento = 0; intento < 3; intento++) {
+    if (intento > 0) await new Promise((r) => setTimeout(r, 500 * intento))
+    const res = await fetch(`${GEMINI_URL}?key=${process.env.GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text
+      return (texto || '').trim() || 'Vaya, no he sabido responder a eso. ¿Lo pruebas de otra forma? 🙂'
+    }
+    ultimoError = `LLM ${res.status}: ${(await res.text()).slice(0, 200)}`
+    if (!REINTENTABLES.has(res.status)) break
   }
-  const data = await res.json()
-  const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text
-  return (texto || '').trim() || 'Vaya, no he sabido responder a eso. ¿Lo pruebas de otra forma? 🙂'
+  throw new Error(ultimoError)
 }
 
 export default async function handler(req, res) {
@@ -61,7 +73,7 @@ export default async function handler(req, res) {
     }
     // Límite defensivo del free tier: solo el tramo reciente de la conversación.
     const recientes = mensajes.slice(-12)
-    const respuesta = await preguntarLLM(SISTEMA, String(contexto || '').slice(0, 4000), recientes)
+    const respuesta = await preguntarLLM(SISTEMA, String(contexto || '').slice(0, 2000), recientes)
     return res.status(200).json({ respuesta })
   } catch {
     return res.status(502).json({ error: 'El asistente no está disponible ahora mismo.' })

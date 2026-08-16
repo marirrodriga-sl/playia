@@ -1,51 +1,23 @@
 import { useState, useRef, useEffect } from 'react'
 
-// Hora local de las playas (Canarias), no la del visitante.
-function hhmm(fecha) {
-  return fecha.toLocaleTimeString('es-ES', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Atlantic/Canary',
-  })
-}
+const SUGERENCIAS = [
+  '¿Qué playa tranquila me recomiendas hoy?',
+  '¿Dónde aparco cerca de Las Canteras?',
+  '¿Dónde comer bien en el sur?',
+  '¿Dónde salir de fiesta esta noche?',
+]
 
-// Construye el bloque de DATOS REALES que se inyecta al modelo. Todo sale del
-// motor de reglas y de Open-Meteo; el modelo solo redacta, no calcula.
-function construirContexto(playa, datos, veredicto, marea) {
-  const L = []
-  L.push(`Playa: ${playa.nombre} (${playa.isla}, costa ${playa.orientacion}).`)
-  L.push(
-    `Veredicto de hoy: ${veredicto.nivel} — ${veredicto.frase}` +
-      (veredicto.motivos.length ? ` Motivos: ${veredicto.motivos.join(', ')}.` : ''),
-  )
-  L.push(`Temperatura del aire: ${Math.round(datos.temperatura)} °C.`)
-  L.push(`Viento: ${Math.round(datos.viento)} km/h.`)
-  L.push(`Temperatura del agua: ${Math.round(datos.tempAgua)} °C.`)
-  L.push(`Oleaje: ${datos.oleaje} m.`)
-  L.push(`Índice UV: ${Math.round(datos.uv)}.`)
-  if (marea) {
-    L.push(`Marea ahora mismo: ${marea.subiendo ? 'subiendo' : 'bajando'}.`)
-    if (marea.proximaPleamar?.fecha) L.push(`Próxima pleamar: ${hhmm(marea.proximaPleamar.fecha)}.`)
-    if (marea.proximaBajamar?.fecha) L.push(`Próxima bajamar: ${hhmm(marea.proximaBajamar.fecha)}.`)
-    if (marea.extremos?.length) {
-      L.push(`Mareas del día: ${marea.extremos.map((e) => `${e.tipo} ${hhmm(e.fecha)}`).join(', ')}.`)
-    }
-    if (marea.mareaViva) {
-      L.push(
-        `AVISO: hay marea viva${marea.rango != null ? ` (rango ${marea.rango} m)` : ''}; ` +
-          `en pleamar la playa puede quedarse con muy poca arena.`,
-      )
-    }
-  }
-  return L.join('\n')
-}
-
-const SUGERENCIAS = ['¿Me baño esta tarde?', '¿Hace viento?', '¿Cómo está la marea?']
-
-export default function ChatPlaya({ playa, datos, veredicto, marea }) {
+// Asistente conversacional de PlayIA: conserje local de Canarias. Vive en el
+// Layout, así que está en toda la web (incluida la landing). Habla con el LLM a
+// través de /api/chat, donde la key está oculta.
+export default function Asistente() {
   const [abierto, setAbierto] = useState(false)
   const [mensajes, setMensajes] = useState([
-    { rol: 'bot', texto: `¡Hola! Pregúntame lo que quieras sobre ${playa.nombre} 🏖️` },
+    {
+      rol: 'bot',
+      texto:
+        '¡Hola! Soy tu asistente de playa en Canarias 🏖️ Pregúntame qué playa elegir, cómo llegar, dónde aparcar, comer, alojarte o salir.',
+    },
   ])
   const [texto, setTexto] = useState('')
   const [cargando, setCargando] = useState(false)
@@ -66,15 +38,15 @@ export default function ChatPlaya({ playa, datos, veredicto, marea }) {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contexto: construirContexto(playa, datos, veredicto, marea),
-          mensajes: nuevos,
-        }),
+        body: JSON.stringify({ mensajes: nuevos }),
       })
       const data = await res.json()
       setMensajes((m) => [
         ...m,
-        { rol: 'bot', texto: res.ok ? data.respuesta : 'Ahora mismo no puedo responder. Inténtalo en un momento 🙏' },
+        {
+          rol: 'bot',
+          texto: res.ok ? data.respuesta : 'Ahora mismo no puedo responder. Inténtalo en un momento 🙏',
+        },
       ])
     } catch {
       setMensajes((m) => [...m, { rol: 'bot', texto: 'No hay conexión con el asistente ahora mismo.' }])
@@ -85,29 +57,27 @@ export default function ChatPlaya({ playa, datos, veredicto, marea }) {
 
   return (
     <>
-      {/* Burbuja flotante */}
       <button
         type="button"
         onClick={() => setAbierto((v) => !v)}
-        aria-label={abierto ? 'Cerrar asistente' : 'Abrir asistente de la playa'}
+        aria-label={abierto ? 'Cerrar asistente' : 'Abrir asistente de PlayIA'}
         aria-expanded={abierto}
-        className="fixed bottom-4 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-sky-600 text-2xl text-white shadow-lg transition hover:bg-sky-700 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-sky-300 active:scale-95"
-    >
+        className="fixed bottom-4 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-sky-600 text-2xl text-white shadow-lg transition hover:scale-105 hover:bg-sky-700 focus:outline-none focus:ring-4 focus:ring-sky-300 active:scale-95"
+      >
         {abierto ? '✕' : '💬'}
       </button>
 
-      {/* Panel de chat */}
       {abierto && (
         <div
           role="dialog"
-          aria-label={`Asistente de ${playa.nombre}`}
-          className="fixed bottom-20 right-4 z-30 flex h-[28rem] w-[min(22rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-sky-100"
+          aria-label="Asistente de PlayIA"
+          className="fixed bottom-20 right-4 z-40 flex h-[30rem] w-[min(23rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-sky-100"
         >
           <header className="flex items-center gap-2 bg-sky-600 px-4 py-3 text-white">
             <span className="text-xl">🏖️</span>
             <div className="leading-tight">
               <p className="text-sm font-semibold">Asistente de PlayIA</p>
-              <p className="text-xs text-sky-100">{playa.nombre}</p>
+              <p className="text-xs text-sky-100">Tu conserje de playa en Canarias</p>
             </div>
           </header>
 
@@ -115,7 +85,7 @@ export default function ChatPlaya({ playa, datos, veredicto, marea }) {
             {mensajes.map((m, i) => (
               <div
                 key={i}
-                className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
+                className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${
                   m.rol === 'user'
                     ? 'ml-auto bg-sky-600 text-white'
                     : 'mr-auto bg-white text-sky-900 ring-1 ring-sky-100'
@@ -171,7 +141,7 @@ export default function ChatPlaya({ playa, datos, veredicto, marea }) {
           </form>
 
           <p className="bg-white px-3 pb-2 text-center text-[10px] text-slate-400">
-            Datos reales de Open-Meteo · IA de Marirrodriga.IA
+            Orientación general · confirma horarios y precios · IA de Marirrodriga.IA
           </p>
         </div>
       )}
