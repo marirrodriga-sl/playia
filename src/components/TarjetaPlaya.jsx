@@ -39,6 +39,10 @@ export default function TarjetaPlaya({ playa }) {
         </div>
         {estado === 'ok' ? (
           <Semaforo nivel={veredicto.nivel} />
+        ) : estado === 'sin-cuota' ? (
+          <span className="shrink-0 text-sm text-amber-500" title="Se ha agotado la cuota diaria de Open-Meteo. Vuelve a intentarlo más tarde.">
+            sin cuota
+          </span>
         ) : estado === 'error' ? (
           <span className="shrink-0 text-sm text-red-400">sin datos</span>
         ) : (

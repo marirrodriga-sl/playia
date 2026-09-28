@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { normalizarHoraActual, extraerPrevision } from './openMeteo.js'
+import {
+  normalizarHoraActual,
+  extraerPrevision,
+  obtenerDatosPlaya,
+  obtenerDatosPlayas,
+  ErrorCuota,
+  ErrorApi,
+} from './openMeteo.js'
 
 const forecast = {
   hourly: {
@@ -59,5 +66,59 @@ describe('extraerPrevision', () => {
     expect(dias[0].datos).toEqual({ temperatura: 26, viento: 11, uv: 7, oleaje: 0.4, tempAgua: 22 })
     expect(dias[1].datos.viento).toBe(40)
     expect(dias[0].fecha).toBeInstanceOf(Date)
+  })
+})
+
+// --- Cuota y errores -------------------------------------------------------
+
+describe('control de errores HTTP', () => {
+  const resFake = (status, body) => async () => ({
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  })
+
+  it('lanza ErrorCuota (no TypeError) cuando la API responde 429', async () => {
+    const f = resFake(429, { error: true, reason: 'Daily API request limit exceeded' })
+    await expect(obtenerDatosPlaya({ lat: 27.7, lon: -15.6 }, f)).rejects.toBeInstanceOf(ErrorCuota)
+  })
+
+  it('lanza ErrorApi ante un 500', async () => {
+    const f = resFake(500, {})
+    await expect(obtenerDatosPlaya({ lat: 27.7, lon: -15.6 }, f)).rejects.toBeInstanceOf(ErrorApi)
+  })
+})
+
+// --- Lote ------------------------------------------------------------------
+
+describe('obtenerDatosPlayas (lote)', () => {
+  const playas = [
+    { id: 'a', lat: 27.7, lon: -15.6 },
+    { id: 'b', lat: 28.1, lon: -15.4 },
+  ]
+
+  it('pide TODAS las playas en una sola llamada por API y las casa por orden', async () => {
+    const urls = []
+    const fetchLote = async (url) => {
+      urls.push(url)
+      const marina = url.includes('marine')
+      const uno = (t, w) =>
+        marina
+          ? { hourly: { time: ['2026-07-05T11:00'], wave_height: [w], sea_surface_temperature: [21] } }
+          : { hourly: { time: ['2026-07-05T11:00'], temperature_2m: [t], wind_speed_10m: [5], uv_index: [6] } }
+      return { ok: true, status: 200, json: async () => [uno(20, 0.2), uno(30, 0.9)] }
+    }
+
+    const mapa = await obtenerDatosPlayas(playas, fetchLote, new Date('2026-07-05T11:00'))
+
+    expect(urls).toHaveLength(2) // 2 APIs, NO 2 por playa
+    expect(urls[0]).toContain('latitude=27.7%2C28.1')
+    expect(mapa.get('a')).toMatchObject({ temperatura: 20, oleaje: 0.2 })
+    expect(mapa.get('b')).toMatchObject({ temperatura: 30, oleaje: 0.9 })
+  })
+
+  it('propaga ErrorCuota del lote', async () => {
+    const f = async () => ({ ok: false, status: 429, json: async () => ({}) })
+    await expect(obtenerDatosPlayas(playas, f)).rejects.toBeInstanceOf(ErrorCuota)
   })
 })
