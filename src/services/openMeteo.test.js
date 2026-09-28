@@ -122,3 +122,39 @@ describe('obtenerDatosPlayas (lote)', () => {
     await expect(obtenerDatosPlayas(playas, f)).rejects.toBeInstanceOf(ErrorCuota)
   })
 })
+
+// --- Endpoint comercial ----------------------------------------------------
+
+describe('endpoint según licencia', () => {
+  const capturaUrl = async (url) => {
+    capturaUrl.urls.push(url)
+    return {
+      ok: true,
+      status: 200,
+      json: async () => [
+        {
+          hourly: {
+            time: ['2026-07-05T11:00'],
+            temperature_2m: [20], wind_speed_10m: [5], uv_index: [6],
+            wave_height: [0.3], sea_surface_temperature: [21],
+          },
+        },
+      ],
+    }
+  }
+
+  it('sin clave usa la API gratuita y no manda apikey', async () => {
+    capturaUrl.urls = []
+    await obtenerDatosPlayas([{ id: 'a', lat: 27.7, lon: -15.6 }], capturaUrl, new Date(), null)
+    expect(capturaUrl.urls[0]).toContain('api.open-meteo.com')
+    expect(capturaUrl.urls[0]).not.toContain('apikey')
+  })
+
+  it('con clave usa el endpoint de cliente (licencia comercial) y manda apikey', async () => {
+    capturaUrl.urls = []
+    await obtenerDatosPlayas([{ id: 'a', lat: 27.7, lon: -15.6 }], capturaUrl, new Date(), 'CLAVE123')
+    expect(capturaUrl.urls[0]).toContain('customer-api.open-meteo.com')
+    expect(capturaUrl.urls[0]).toContain('apikey=CLAVE123')
+    expect(capturaUrl.urls[1]).toContain('customer-marine-api.open-meteo.com')
+  })
+})

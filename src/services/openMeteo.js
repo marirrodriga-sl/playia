@@ -1,5 +1,24 @@
-const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast'
-const MARINE_URL = 'https://marine-api.open-meteo.com/v1/marine'
+// La API gratuita es SOLO para uso no comercial y está limitada (600/min,
+// 5.000/hora, 10.000/día). Con una clave de suscripción, Open-Meteo sirve el
+// mismo API desde el endpoint de cliente, con licencia comercial y sin tope
+// diario: el día que PlayIA se monetice (white-label B2B) basta con definir
+// VITE_OPEN_METEO_KEY, sin tocar el código.
+const GRATIS = {
+  forecast: 'https://api.open-meteo.com/v1/forecast',
+  marine: 'https://marine-api.open-meteo.com/v1/marine',
+}
+const COMERCIAL = {
+  forecast: 'https://customer-api.open-meteo.com/v1/forecast',
+  marine: 'https://customer-marine-api.open-meteo.com/v1/marine',
+}
+
+function clavePorDefecto() {
+  try {
+    return import.meta.env?.VITE_OPEN_METEO_KEY || null
+  } catch {
+    return null // fuera de Vite (tests, función serverless)
+  }
+}
 
 const CAMPOS_FORECAST = 'temperature_2m,wind_speed_10m,uv_index'
 const CAMPOS_MARINE = 'wave_height,sea_surface_temperature'
@@ -56,13 +75,14 @@ export function normalizarHoraActual(forecast, marine, ahora = new Date()) {
   }
 }
 
-function construirUrl(base, playas, hourly) {
+function construirUrl(base, playas, hourly, clave) {
   const params = new URLSearchParams({
     latitude: playas.map((p) => p.lat).join(','),
     longitude: playas.map((p) => p.lon).join(','),
     hourly,
     timezone: 'auto',
   })
+  if (clave) params.set('apikey', clave)
   return `${base}?${params}`
 }
 
@@ -74,10 +94,11 @@ function comoLista(json, n) {
   return lista
 }
 
-async function pedirLote(playas, fetchImpl) {
+async function pedirLote(playas, fetchImpl, clave = clavePorDefecto()) {
+  const base = clave ? COMERCIAL : GRATIS
   const [forecastRes, marineRes] = await Promise.all([
-    fetchImpl(construirUrl(FORECAST_URL, playas, CAMPOS_FORECAST)),
-    fetchImpl(construirUrl(MARINE_URL, playas, CAMPOS_MARINE)),
+    fetchImpl(construirUrl(base.forecast, playas, CAMPOS_FORECAST, clave)),
+    fetchImpl(construirUrl(base.marine, playas, CAMPOS_MARINE, clave)),
   ])
   const [forecast, marine] = await Promise.all([leerJson(forecastRes), leerJson(marineRes)])
   return {
@@ -88,11 +109,16 @@ async function pedirLote(playas, fetchImpl) {
 
 // Pide N playas gastando 2 peticiones por lote en vez de 2 por playa.
 // Devuelve un Map id -> datos normalizados.
-export async function obtenerDatosPlayas(playas, fetchImpl = fetch, ahora = new Date()) {
+export async function obtenerDatosPlayas(
+  playas,
+  fetchImpl = fetch,
+  ahora = new Date(),
+  clave = clavePorDefecto(),
+) {
   const mapa = new Map()
   for (let i = 0; i < playas.length; i += TAM_LOTE) {
     const trozo = playas.slice(i, i + TAM_LOTE)
-    const { forecast, marine } = await pedirLote(trozo, fetchImpl)
+    const { forecast, marine } = await pedirLote(trozo, fetchImpl, clave)
     trozo.forEach((playa, k) => {
       mapa.set(playa.id, normalizarHoraActual(forecast[k], marine[k], ahora))
     })
