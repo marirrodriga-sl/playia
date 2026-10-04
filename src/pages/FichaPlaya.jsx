@@ -66,6 +66,11 @@ export default function FichaPlaya() {
 
       {estado === 'cargando' && <p className="mt-4 text-sky-800">Cargando datos…</p>}
       {estado === 'error' && <p className="mt-4 text-red-600">No se pudieron cargar los datos.</p>}
+      {estado === 'sin-cuota' && (
+        <p className="mt-4 text-amber-700">
+          Se ha agotado la cuota diaria de datos del tiempo. Vuelve a intentarlo más tarde.
+        </p>
+      )}
 
       {estado === 'ok' && (
         <>
