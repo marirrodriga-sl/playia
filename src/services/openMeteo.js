@@ -1,23 +1,53 @@
 // La API gratuita es SOLO para uso no comercial y está limitada (600/min,
 // 5.000/hora, 10.000/día). Con una clave de suscripción, Open-Meteo sirve el
 // mismo API desde el endpoint de cliente, con licencia comercial y sin tope
-// diario: el día que PlayIA se monetice (white-label B2B) basta con definir
-// VITE_OPEN_METEO_KEY, sin tocar el código.
+// diario: el día que PlayIA se monetice (white-label B2B) hay que definir DOS
+// variables en Vercel y no se toca el código:
+//
+//   OPEN_METEO_KEY        la clave. SIN prefijo VITE_, a propósito: así Vite no
+//                         la puede meter en el bundle del navegador, igual que
+//                         GEMINI_API_KEY. Solo la ve el servidor.
+//   VITE_OPEN_METEO_PROXY =1. No es un secreto: es el interruptor que le dice
+//                         al navegador "pide por /api/meteo", porque la clave
+//                         la pone ahí la función, no él.
+//
+// Sin ellas, todo sigue yendo directo a la API gratuita como hasta ahora.
 const GRATIS = {
   forecast: 'https://api.open-meteo.com/v1/forecast',
   marine: 'https://marine-api.open-meteo.com/v1/marine',
 }
-const COMERCIAL = {
+export const COMERCIAL = {
   forecast: 'https://customer-api.open-meteo.com/v1/forecast',
   marine: 'https://customer-marine-api.open-meteo.com/v1/marine',
 }
+const PROXY = '/api/meteo'
 
-function clavePorDefecto() {
+// Solo hay clave donde hay `process`: la función serverless. En el navegador
+// `process` no existe, así que esto devuelve null siempre y la clave no puede
+// filtrarse por aquí ni por accidente.
+export function clavePorDefecto() {
   try {
-    return import.meta.env?.VITE_OPEN_METEO_KEY || null
+    return process.env?.OPEN_METEO_KEY || null
   } catch {
-    return null // fuera de Vite (tests, función serverless)
+    return null
   }
+}
+
+export function proxyActivo() {
+  try {
+    return !!import.meta.env?.VITE_OPEN_METEO_PROXY
+  } catch {
+    return false // fuera de Vite (tests, función serverless)
+  }
+}
+
+// Tres caminos: el servidor con suscripción va directo con su clave; el
+// navegador con suscripción pasa por la función (que pone la clave); y sin
+// suscripción, la API gratuita de siempre.
+export function destino(recurso, { clave = clavePorDefecto(), proxy = proxyActivo() } = {}) {
+  if (clave) return { base: COMERCIAL[recurso], clave }
+  if (proxy) return { base: `${PROXY}/${recurso}`, clave: null }
+  return { base: GRATIS[recurso], clave: null }
 }
 
 const CAMPOS_FORECAST = 'temperature_2m,wind_speed_10m,uv_index'
@@ -95,10 +125,11 @@ function comoLista(json, n) {
 }
 
 async function pedirLote(playas, fetchImpl, clave = clavePorDefecto()) {
-  const base = clave ? COMERCIAL : GRATIS
+  const f = destino('forecast', { clave })
+  const m = destino('marine', { clave })
   const [forecastRes, marineRes] = await Promise.all([
-    fetchImpl(construirUrl(base.forecast, playas, CAMPOS_FORECAST, clave)),
-    fetchImpl(construirUrl(base.marine, playas, CAMPOS_MARINE, clave)),
+    fetchImpl(construirUrl(f.base, playas, CAMPOS_FORECAST, f.clave)),
+    fetchImpl(construirUrl(m.base, playas, CAMPOS_MARINE, m.clave)),
   ])
   const [forecast, marine] = await Promise.all([leerJson(forecastRes), leerJson(marineRes)])
   return {

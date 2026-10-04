@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   normalizarHoraActual,
   extraerPrevision,
@@ -6,6 +6,8 @@ import {
   obtenerDatosPlayas,
   ErrorCuota,
   ErrorApi,
+  destino,
+  clavePorDefecto,
 } from './openMeteo.js'
 
 const forecast = {
@@ -156,5 +158,46 @@ describe('endpoint según licencia', () => {
     expect(capturaUrl.urls[0]).toContain('customer-api.open-meteo.com')
     expect(capturaUrl.urls[0]).toContain('apikey=CLAVE123')
     expect(capturaUrl.urls[1]).toContain('customer-marine-api.open-meteo.com')
+  })
+})
+
+// --- Dónde se pide y quién pone la clave -----------------------------------
+
+describe('destino', () => {
+  it('con clave (servidor) va directo al endpoint de cliente y la lleva', () => {
+    expect(destino('forecast', { clave: 'K', proxy: false })).toEqual({
+      base: 'https://customer-api.open-meteo.com/v1/forecast',
+      clave: 'K',
+    })
+  })
+
+  it('con proxy (navegador) pasa por /api/meteo y NO lleva clave', () => {
+    expect(destino('marine', { clave: null, proxy: true })).toEqual({
+      base: '/api/meteo/marine',
+      clave: null,
+    })
+  })
+
+  it('sin clave ni proxy usa la API gratuita', () => {
+    expect(destino('forecast', { clave: null, proxy: false })).toEqual({
+      base: 'https://api.open-meteo.com/v1/forecast',
+      clave: null,
+    })
+  })
+})
+
+describe('la clave de suscripción no puede llegar al navegador', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('clavePorDefecto IGNORA las variables VITE_ (Vite las mete en el bundle)', () => {
+    vi.stubEnv('VITE_OPEN_METEO_KEY', 'CLAVE_FILTRADA')
+    expect(clavePorDefecto()).toBeNull()
+  })
+
+  it('clavePorDefecto lee OPEN_METEO_KEY, que solo existe en el servidor', () => {
+    vi.stubEnv('OPEN_METEO_KEY', 'CLAVE_SERVIDOR')
+    expect(clavePorDefecto()).toBe('CLAVE_SERVIDOR')
   })
 })
